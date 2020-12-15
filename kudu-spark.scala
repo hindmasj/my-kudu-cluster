@@ -4,7 +4,11 @@ import org.apache.kudu.client._
 import org.apache.kudu.spark.kudu._
 import collection.JavaConverters._
 
-val kudumaster="172.31.160.1:7051,172.31.160.1:7151,172.31.160.1:7251"
+sc.setLogLevel("INFO")
+
+val kuduhost="172.31.160.1"
+val kuduports=Seq(7051,7151,7251)
+val kudumaster=kuduports.map(kuduhost+":"+_).mkString(",")
 
 val kuduContext = new KuduContext(
 	kudumaster, spark.sparkContext)

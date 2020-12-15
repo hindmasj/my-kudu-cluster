@@ -86,25 +86,44 @@ insert into test2 values ('world',2020,12,15,0,'2020-12-15T12:34:56');
 ### Adding Spark Shell
 
 ````
+wget https://archive.apache.org/dist/spark/spark-2.4.5/spark-2.4.5-bin-hadoop2.6.tgz
 sudo -i
 cd /opt
-wget https://archive.apache.org/dist/spark/spark-2.4.5/spark-2.4.5-bin-hadoop2.6.tgz
-tar xvfz spark-2.4.5-bin-hadoop2.6.tgz
+tar xvfz <download dir>/spark-2.4.5-bin-hadoop2.6.tgz
 ln -s spark-2.4.5-bin-hadoop2.6 spark-2
 exit
 ````
-
-### Running Spark Shell
 
 ````
 ./spark-shell.sh
 ````
 
-Note the above commands imports the Kudu-Spark API and creates a new "kuduContext" object.
+Lovely for playing with Spark but from inside WSL2 image cannot communicate with docker network
+
+### Spark Docker Image
+
+Use the [Big Data Europe](https://github.com/big-data-europe) image.
 
 ````
+docker pull bde2020/sprk-base
+docker build -f Dockerfile-spark -t sjh/spark .
+````
+
+The image build requires the spark tgz file downloaded above. The base image uses a version of spark 3 built with
+scala 2.12. By substituting the downloaded archive we get a version of spark 2.4.5 built with scala 2.11. The image starts 
+a spark shell to the correct network, imports the Kudu-Spark API and creates a new "kuduContext" object.
+
+### Running Spark Shell
+
+This runs the above image as a one shot spark shell.
+
+````
+docker run -it --rm sjh/spark
+
 val df=spark.read.options(
 	Map("kudu.master" -> kudumaster,"kudu.table" -> "impala::default.test2")
 	).format("kudu").load
 df.count
+
+:quit
 ````

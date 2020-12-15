@@ -1,0 +1,11 @@
+#
+# Dockerfile to create kudu compatible Spark image
+# This means scala 2.11 support
+#
+
+FROM bde2020/spark-base
+RUN mv /spark /spark_2.12
+ADD /spark-2.4.5-bin-hadoop2.6.tgz /
+RUN ln -s /spark-2.4.5-bin-hadoop2.6 /spark
+ADD /kudu-spark.scala /
+ENTRYPOINT ["/spark/bin/spark-shell","--master","local","--packages","org.apache.kudu:kudu-spark2_2.11:1.13.0","-I","/kudu-spark.scala"]
