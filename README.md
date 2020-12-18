@@ -7,7 +7,6 @@
 ````
 . ./set-ip.sh
 ./full-cluster.sh up -d
-./impala-daemon.sh
 ````
 
 ### Starting The Cluster
@@ -15,25 +14,51 @@
 ````
 . ./set-ip.sh
 ./full-cluster.sh up -d
-docker start kudu-impala
-./impala-shell.sh
 ````
 
 ### Stopping The Cluster
 
 ````
-docker stop kudu-impala
 ./full-cluster.sh stop
 ````
 
 ### Deleting The Cluster
 
 ````
-docker rm kudu-impala
 ./full-cluster.sh down -v
 ````
 
-## Some Impala
+# Impala
+
+## Add Impala Shell To The Cluster
+
+### Create
+
+````
+./impala-daemon.sh
+./impala-shell.sh
+````
+
+### Start
+
+````
+docker start kudu-impala
+./impala-shell.sh
+````
+
+### Stopping
+
+````
+docker stop kudu-impala
+````
+
+### Deleting
+
+````
+docker rm kudu-impala
+````
+
+## Impala Actions
 
 ### Partition By Hash
 
@@ -76,14 +101,16 @@ stored as kudu;
 
 insert into test2 values ('hello',2020,12,14,0,'2020-12-14T12:34:56');
 
-alter table test add range partition value = (2020,12,15);
+alter table test2 add range partition value = (2020,12,15);
 
 insert into test2 values ('world',2020,12,15,0,'2020-12-15T12:34:56');
 ````
 
-## Some Spark
+# Some Spark
 
-### Adding Spark Shell
+## Adding Spark Shell To The Cluster
+
+### Installing Spark Shell Locally
 
 ````
 wget https://archive.apache.org/dist/spark/spark-2.4.5/spark-2.4.5-bin-hadoop2.6.tgz
@@ -98,14 +125,14 @@ exit
 ./spark-shell.sh
 ````
 
-Lovely for playing with Spark but from inside WSL2 image cannot communicate with docker network
+Lovely for playing with Spark but what if we want to use a container?
 
-### Spark Docker Image
+### Create Custom Spark Docker Image
 
 Use the [Big Data Europe](https://github.com/big-data-europe) image.
 
 ````
-docker pull bde2020/sprk-base
+docker pull bde2020/spark-base
 docker build -f Dockerfile-spark -t sjh/spark .
 ````
 
@@ -115,11 +142,17 @@ a spark shell to the correct network, imports the Kudu-Spark API and creates a n
 
 ### Running Spark Shell
 
-This runs the above image as a one shot spark shell.
+This runs the above image as a one shot spark shell. Exiting the shell stops the container and the "--rm" switch cleans it up afterwards.
 
 ````
-docker run -it --rm sjh/spark
+docker run -it --rm -e KUDU_IP=${KUDU_QUICKSTART_IP} sjh/spark
+````
 
+## Spark Actions
+
+### Sanity Test
+
+````
 val df=spark.read.options(
 	Map("kudu.master" -> kudumaster,"kudu.table" -> "impala::default.test2")
 	).format("kudu").load
@@ -127,3 +160,6 @@ df.count
 
 :quit
 ````
+
+If you did the previous Impala actions then the answer should be 2.
+
