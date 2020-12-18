@@ -122,7 +122,7 @@ exit
 ````
 
 ````
-./spark-shell.sh
+./local-spark-shell.sh
 ````
 
 Lovely for playing with Spark but what if we want to use a container?
@@ -145,7 +145,7 @@ a spark shell to the correct network, imports the Kudu-Spark API and creates a n
 This runs the above image as a one shot spark shell. Exiting the shell stops the container and the "--rm" switch cleans it up afterwards.
 
 ````
-docker run -it --rm -e KUDU_IP=${KUDU_QUICKSTART_IP} sjh/spark
+./spark-shell.sh
 ````
 
 ## Spark Actions
