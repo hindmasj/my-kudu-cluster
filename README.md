@@ -163,3 +163,78 @@ df.count
 
 If you did the previous Impala actions then the answer should be 2.
 
+### Manipulating Spark Data
+
+Load a dataframe from file.
+
+````
+val df=spark.read.json("test-data.json")
+df.show
+
++-----------+-------------+-----+
+|         id|           ts|value|
++-----------+-------------+-----+
+|test-item-1|1607898225000|  123|
+|test-item-2|1608023594000|  456|
++-----------+-------------+-----+
+
+import java.sql.Timestamp
+
+df.map(r => new Timestamp(r.getAs[Long]("ts"))).show
+
++-------------------+
+|              value|
++-------------------+
+|2020-12-13 22:23:45|
+|2020-12-15 09:13:14|
++-------------------+
+````
+
+Extract the YYYY, MM and DD fields from the epoch millis long ts field.
+
+Using a java.util.Calendar
+
+````
+import java.util.Calendar
+
+val c=Calendar.getInstance()
+c.setTimeInMillis(1607898225000L)
+c.get(Calendar.YEAR)
+c.get(Calendar.MONTH)
+c.get(Calendar.DAY_OF_MONTH)
+````
+
+Using java.time.Instant
+
+````
+import java.time._
+
+val i = Instant.ofEpochMilli(1607898225000L)
+val io=i.atOffset(ZoneOffset.UTC)
+io.getYear
+io.getMonthValue
+io.getDayOfMonth
+````
+
+Trying to develop a UDF to do this in line. Not finished.
+````
+import java.text.SimpleDateFormat
+import java.util.Date
+
+object dateUtil{
+	val FORMAT="yyyy-MM-dd'T'hh:mm:ss"
+    val DATE_FORMATTER=new SimpleDateFormat(FORMAT)
+    
+    def stringToDate(date:String):Date = DATE_FORMATTER.parse(date)
+	
+	val stringToLong:Function1[String,Long] = date => stringToDate(date).getTime()
+	
+	val stringToLongUDF = udf(stringToLong)
+}
+
+val df1 = df.withColumn("ts_long",dateUtil.stringToLongUDF(col("ts")))
+
+df1.show
+
+````
+
