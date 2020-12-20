@@ -163,9 +163,12 @@ df.count
 
 If you did the previous Impala actions then the answer should be 2.
 
-### Manipulating Spark Data
+### Loading Spark Data
 
-Load a dataframe from file.
+Create a test file with some dates in epoch millis. Use ````date -d 2020-12-14T01:23:45Z '+%s'```` for example. 
+The result is in seconds so you need to add 3 zeroes to get milliseconds, which is what java will normally provide.
+
+The load a dataframe from the file.
 
 ````
 val df=spark.read.json("test-data.json")
@@ -185,10 +188,12 @@ df.map(r => new Timestamp(r.getAs[Long]("ts"))).show
 +-------------------+
 |              value|
 +-------------------+
-|2020-12-13 22:23:45|
+|2020-12-14 01:23:45|
 |2020-12-15 09:13:14|
 +-------------------+
 ````
+
+### Diversion: Manipulating Time In Scala
 
 Extract the YYYY, MM and DD fields from the epoch millis long ts field.
 
@@ -216,25 +221,63 @@ io.getMonthValue
 io.getDayOfMonth
 ````
 
-Trying to develop a UDF to do this in line. Not finished.
+### Transforming The Timestamp
+
+#### Row-wise Transform
+
+Try to map the current row onto a new row with the extra fields merged in.
+
 ````
-import java.text.SimpleDateFormat
-import java.util.Date
+import java.time._
+import org.apache.spark.sql._
+import org.apache.spark.sql.types._
 
 object dateUtil{
-	val FORMAT="yyyy-MM-dd'T'hh:mm:ss"
-    val DATE_FORMATTER=new SimpleDateFormat(FORMAT)
-    
-    def stringToDate(date:String):Date = DATE_FORMATTER.parse(date)
-	
-	val stringToLong:Function1[String,Long] = date => stringToDate(date).getTime()
-	
-	val stringToLongUDF = udf(stringToLong)
+
+	val dateRowSchema = StructType(
+		StructField("yyyy",IntegerType,false) ::
+		StructField("mm",IntegerType,false) ::
+		StructField("dd",IntegerType,false) ::
+		Nil )
+
+	def mergeDateFields(row0:Row):Row = {
+		val ts = row0.getAs[Long]("ts")
+		val tio = Instant.ofEpochMilli(ts).atOffset(ZoneOffset.UTC)
+		val row1 = Row.apply( tio.getYear, tio.getMonthValue, tio.getDayOfMonth )
+		Row.merge(row0,row1)
+	}
+
 }
 
-val df1 = df.withColumn("ts_long",dateUtil.stringToLongUDF(col("ts")))
+val df1 = df.map(row => dateUtil.mergeDateFields(row))
 
-df1.show
-
+<console>:58: error: Unable to find encoder for type org.apache.spark.sql.Row. 
+An implicit Encoder[org.apache.spark.sql.Row] is needed to store org.apache.spark.sql.Row instances in a Dataset. 
+Primitive types (Int, String, etc) and Product types (case classes) are supported by importing spark.implicits._  
+Support for serializing other types will be added in future releases.
 ````
 
+Sadly this does not work, as you cannot map one row to another. Notice also that the schema cannot be applied, which gives you the clue you are doing wrongly.
+
+#### Column-wise Transform
+
+This uses "withColumn" transform and makes use of the generic Spark sql functions. Note that the use of a temporary column to convert the millis time to a timestamp which is in seconds.
+
+````
+import org.apache.spark.sql.functions._
+
+val df1 = df.withColumn("ts_sec",col("ts") / 1000 cast("timestamp")).
+	withColumn("yyyy",year(col("ts_sec"))).
+	withColumn("mm",month(col("ts_sec"))).
+	withColumn("dd",dayofmonth(col("ts_sec"))).
+	drop("ts_sec")
+	
+df1.show
+
++-----------+-------------+-----+----+---+---+
+|         id|           ts|value|yyyy| mm| dd|
++-----------+-------------+-----+----+---+---+
+|test-item-1|1607909025000|  123|2020| 12| 14|
+|test-item-2|1608023594000|  456|2020| 12| 15|
++-----------+-------------+-----+----+---+---+
+````
