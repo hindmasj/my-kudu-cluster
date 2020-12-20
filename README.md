@@ -1,5 +1,7 @@
 # Quickstart
 
+You need to clone the [Apache Kudu](https://github.com/apache/kudu.git) repo into the parent directory of this repository.
+
 ## Managing The Cluster
 
 ### Creating The Cluster
