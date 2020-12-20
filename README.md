@@ -4,6 +4,8 @@ You need to clone the [Apache Kudu](https://github.com/apache/kudu.git) repo int
 
 ## Managing The Cluster
 
+How to use Docker to create your cluster.
+
 ### Creating The Cluster
 
 ````
