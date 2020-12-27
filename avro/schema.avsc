@@ -1,0 +1,10 @@
+{
+	"type": "record",
+	"namespace": "org.test",
+    "name": "kudutest",
+    "fields": [
+       { "name": "id", "type": "string" },
+       { "name": "value", "type": "int" },
+	   { "name": "ts", "type": "long" }
+    ]
+}
