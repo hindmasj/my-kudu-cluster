@@ -14,7 +14,7 @@ docker-compose up -d
 Use an instance of the same kafka image to access the client tools.
 
 ````
-docker run --rm -it --network kafka_default wurstmeister/kafka bash
+docker run --rm -it --network docker_default wurstmeister/kafka bash
 
 kafka-topics.sh --bootstrap-server kafka:9092 --create --topic test
 Created topic test.
