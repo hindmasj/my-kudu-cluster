@@ -1,3 +1,3 @@
 #!/bin/bash
 
-docker exec -it kudu-impala impala-shell
+docker exec -it -w /home/impala kudu-impala impala-shell "${@}"
