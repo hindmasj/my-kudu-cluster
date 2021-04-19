@@ -1,5 +1,5 @@
-docker exec -it docker_kudu-master-1_1 kudu table create \
-	kudu-master-1:7051,kudu-master-2:7151,kudu-master-3:7251 \
+docker exec -it kudu-master kudu table create \
+	kudu-master-0:7051,kudu-master-1:7151,kudu-master-2:7251 \
 '{
 	"table_name": "foo",
 	"schema": {
