@@ -16,32 +16,33 @@ val kuduPorts=Seq(7051,7151,7251)
 // docker inspection of the master addresses
 val cmd="docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "
 val sq="'"
-val kuduMasterAddresses=for(x <- kuduMasterArray) yield {cmd+x}.!!.trim.stripPrefix(sq).stripSuffix(sq)
-
-// Master URL and context for local shell
-val ip=sys.env("SPARK_LOCAL_IP")
-val kuduLocalList=for(x <- kuduPorts) yield s"${ip}:${x}"
-val kuduLocalURL=kuduLocalList.mkString(",")
-//val kuduLocalContext=new KuduContext(kuduLocalURL,sc)
-
-// Master URL and context for container based shell
-val kuduContainerList=kuduMasterArray.zip(kuduPorts).map(x => s"${x._1}:${x._2}")
-val kuduContainerURL=kuduContainerList.mkString(",")
-//val kuduContainerContext=new KuduContext(kuduContainerURL,sc)
+//val kuduMasterAddresses=for(x <- kuduMasterArray) yield {cmd+x}.!!.trim.stripPrefix(sq).stripSuffix(sq)
 
 // Are we local or in a container
-val procOne="cat /proc/1/cmdline".!!.substring(1,5)
-print(s"${procOne}\n")
-val kc = procOne match {
+val defaultIP="0.0.0.0"
+val ip=try {
+    sys.env("SPARK_LOCAL_IP")
+} catch {
+    case e:java.util.NoSuchElementException => defaultIP
+}
+val (kuduMasterURL,kc) = ip match {
 
-    case "init" => {
-        print("In a host\n")
-        new KuduContext(kuduLocalURL,sc)
+    case `defaultIP` => {
+        print("In a container\n")
+        // Master URL and context for container based shell
+        val kuduContainerList=kuduMasterArray.zip(kuduPorts).map(x => s"${x._1}:${x._2}")
+        val kuduContainerURL=kuduContainerList.mkString(",")
+        (kuduContainerURL,new KuduContext(kuduContainerURL,sc))
     }
 
     case _ => {
-        print("In a container\n")
-        new KuduContext(kuduContainerURL,sc)
+        print("In a host\n")
+        // Master URL and context for local shell
+        val kuduLocalList=for(x <- kuduPorts) yield s"${ip}:${x}"
+        val kuduLocalURL=kuduLocalList.mkString(",")
+        (kuduLocalURL,new KuduContext(kuduLocalURL,sc))
     }
 
 }
+
+sc.setLogLevel("WARN")

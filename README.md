@@ -231,7 +231,7 @@ This runs the above image as a one shot spark shell. Exiting the shell stops the
 
 ````
 val df=spark.read.options(
-	Map("kudu.master" -> kudumaster,"kudu.table" -> "impala::default.test2")
+	Map("kudu.master" -> kuduMasterURL,"kudu.table" -> "impala::default.test2")
 	).format("kudu").load
 df.count
 
@@ -245,7 +245,7 @@ If you did the previous Impala actions then the answer should be 2.
 Create a test file with some dates in epoch millis. Use ````date -d 2020-12-14T01:23:45Z '+%s'```` for example. 
 The result is in seconds so you need to add 3 zeroes to get milliseconds, which is what java will normally provide.
 
-The load a dataframe from the file.
+This file has been copied to the container for you. Load a dataframe from the file.
 
 ````
 val df=spark.read.json("test-data.json")
