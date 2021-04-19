@@ -58,7 +58,7 @@ starting the cluster before the daemon is fully up and connected to the storage 
 ## Running Impala
 
 The script ``impala-shell.sh`` connects to the impala container and runs the impala-shell, passing 
-in any extra commands required. Note that as this running inside the container you have to get creative 
+in any extra commands required. Note that as this is running inside the container you have to get creative 
 if you are working with files.
 
 ### Interactive Prompt
@@ -196,6 +196,9 @@ ln -s spark-2.4.5-bin-hadoop2.6 spark-2
 exit
 ````
 
+Then use this script to run the shell. The script includes setting up a string to use as the master URL
+and a KuduContext object. Look for the objects ``kuduMasterURL`` and ``kc``.
+
 ````
 ./local-spark-shell.sh
 ````
@@ -224,6 +227,8 @@ This runs the above image as a one shot spark shell. Exiting the shell stops the
 ````
 ./spark-shell.sh
 ````
+
+This shell creates the same string and KuduContext objects as above.
 
 ## Spark Actions
 
