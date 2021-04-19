@@ -200,7 +200,9 @@ exit
 ./local-spark-shell.sh
 ````
 
-Lovely for playing with Spark but what if we want to use a container?
+The problem is that the networking nature of the docker cluster means the local spark shell cannot 
+resolve the tablet and master addresses returned by the RPC calls. Lovely for playing with Spark but we
+really need to use a container?
 
 ### Create Custom Spark Docker Image
 
