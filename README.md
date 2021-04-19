@@ -1,7 +1,5 @@
 # Quickstart
 
-You need to clone the [Apache Kudu](https://github.com/apache/kudu.git) repo into the parent directory of this repository.
-
 ## Managing The Cluster
 
 How to use Docker to create your cluster.
@@ -9,14 +7,12 @@ How to use Docker to create your cluster.
 ### Creating The Cluster
 
 ````
-. ./set-ip.sh
 ./full-cluster.sh up -d
 ````
 
 ### Starting The Cluster
 
 ````
-. ./set-ip.sh
 ./full-cluster.sh up -d
 ````
 
@@ -32,34 +28,109 @@ How to use Docker to create your cluster.
 ./full-cluster.sh down -v
 ````
 
+# Kudu
+
+## Web Sites
+
+You can access the cluster web sites at any of the mapped ports. See the compose file 
+``kudu-cluster.yml`` for details, but the simplest method is to point your browser at 
+``localhost:8051`` to connect to the first master server, and then follow the links from there.
+
+## Command Line
+
+To use the Kudu command line you should execute it from the first master container which is called 
+"kudu-master". The kudu master list is always "kudu-master-0:7051,kudu-master-1:7151,kudu-master-2:7251".
+
+````
+docker exec -it kudu-master kudu table list kudu-master-0:7051,kudu-master-1:7151,kudu-master-2:7251
+
+foo
+impala::default.foo
+````
+
+See the script ``kudu/create_foo.sh`` for an example of how to create a table from the command line.
+
 # Impala
 
-## Add Impala Shell To The Cluster
+An Impala daemon is started as part of the existing cluster. You need to wait about 2 minutes after 
+starting the cluster before the daemon is fully up and connected to the storage cluster.
 
-### Create
+## Running Impala
 
+The script ``impala-shell.sh`` connects to the impala container and runs the impala-shell, passing 
+in any extra commands required. Note that as this running inside the container you have to get creative 
+if you are working with files.
+
+### Interactive Prompt
+
+To get an Impala prompt run the script ``impala-shell.sh``.
 ````
-./impala-daemon.sh
 ./impala-shell.sh
+
+create table foo (id int primary key, value string) partition by hash partitions 2 stored as kudu;
+insert into foo values (1,'hello');
+select * from foo;
+drop table foo;
+exit;
 ````
 
-### Start
+### Query Command
+
+You can run queries from the command line as normal.
 
 ````
-docker start kudu-impala
-./impala-shell.sh
+./impala-shell.sh -q 'create table foo (id int primary key, value string) 
+partition by hash partitions 2 stored as kudu;'
 ````
 
-### Stopping
+Be careful of mixed quoting.
 
 ````
-docker stop kudu-impala
+ ./impala-shell.sh -q 'insert into foo values (1,'hello')'
+
+ERROR: AnalysisException: Could not resolve column/field reference: 'hello'
 ````
 
-### Deleting
+````
+./impala-shell.sh -q 'insert into foo values (1,"hello")'
+
+Modified 1 row(s), 0 row error(s) in 0.13s
+````
+
+### Query File
+
+If you have to run queries from a file you need to copy the file to the container first.
 
 ````
-docker rm kudu-impala
+echo "select * from foo;" > test-foo.sql
+./impala-shell.sh -f test-foo.sql
+
+Could not open file 'test-foo.sql': [Errno 2] No such file or directory: 'test-foo.sql'
+````
+
+````
+docker cp test-foo.sql kudu-impala:/home/impala
+./impala-shell.sh -f test-foo.sql
+ 
++----+-------+
+| id | value |
++----+-------+
+| 1  | hello |
++----+-------+
+Fetched 1 row(s) in 0.16s
+````
+
+### Output File
+
+If you want the result written to an output file you need to do the reverse and copy the result file back
+out of the container.
+
+````
+./impala-shell.sh -f test-foo.sql -B --output_delimiter=',' -o foo.txt
+docker cp kudu-impala:/home/impala/foo.txt .
+cat foo.txt
+
+1,hello
 ````
 
 ## Impala Actions
@@ -129,7 +200,9 @@ exit
 ./local-spark-shell.sh
 ````
 
-Lovely for playing with Spark but what if we want to use a container?
+The problem is that the networking nature of the docker cluster means the local spark shell cannot 
+resolve the tablet and master addresses returned by the RPC calls. Lovely for playing with Spark but we
+really need to use a container?
 
 ### Create Custom Spark Docker Image
 
@@ -158,7 +231,7 @@ This runs the above image as a one shot spark shell. Exiting the shell stops the
 
 ````
 val df=spark.read.options(
-	Map("kudu.master" -> kudumaster,"kudu.table" -> "impala::default.test2")
+	Map("kudu.master" -> kuduMasterURL,"kudu.table" -> "impala::default.test2")
 	).format("kudu").load
 df.count
 
@@ -172,7 +245,7 @@ If you did the previous Impala actions then the answer should be 2.
 Create a test file with some dates in epoch millis. Use ````date -d 2020-12-14T01:23:45Z '+%s'```` for example. 
 The result is in seconds so you need to add 3 zeroes to get milliseconds, which is what java will normally provide.
 
-The load a dataframe from the file.
+This file has been copied to the container for you. Load a dataframe from the file.
 
 ````
 val df=spark.read.json("test-data.json")

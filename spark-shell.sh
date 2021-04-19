@@ -1,7 +1,6 @@
 #!/bin/bash
 
 LOC=$(dirname $(readlink -f ${BASH_SOURCE[0]}))
+. ${LOC}/common.sh
 
-. ${LOC}/set-ip.sh
-
-docker run -it --rm -e KUDU_IP=${KUDU_QUICKSTART_IP} --network docker_default sjh/spark
+docker run -it --rm -e KUDU_IP=${DOCKER_IP} --network ${DOCKER_NETWORK} sjh/spark
