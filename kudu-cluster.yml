@@ -14,6 +14,7 @@ services:
       - >
         MASTER_ARGS=--fs_wal_dir=/var/lib/kudu/master
         --rpc_bind_addresses=0.0.0.0:7051
+        --rpc_advertised_addresses=${DOCKER_IP}:7051
         --webserver_port=8051
         --webserver_advertised_addresses=${DOCKER_IP}:8051
         --webserver_doc_root=/opt/kudu/www
@@ -22,6 +23,7 @@ services:
 
   kudu-master-1:
     image: ${KUDU_IMAGE}
+    container_name: ${MASTER_CONTAINER}-1
     ports:
       - 7151:7151
       - 8151:8151
@@ -31,6 +33,7 @@ services:
       - >
         MASTER_ARGS=--fs_wal_dir=/var/lib/kudu/master
         --rpc_bind_addresses=0.0.0.0:7151
+        --rpc_advertised_addresses=${DOCKER_IP}:7151
         --webserver_port=8151
         --webserver_advertised_addresses=${DOCKER_IP}:8151
         --webserver_doc_root=/opt/kudu/www
@@ -39,6 +42,7 @@ services:
 
   kudu-master-2:
     image: ${KUDU_IMAGE}
+    container_name: ${MASTER_CONTAINER}-2
     ports:
       - 7251:7251
       - 8251:8251
@@ -48,6 +52,7 @@ services:
       - >
         MASTER_ARGS=--fs_wal_dir=/var/lib/kudu/master
         --rpc_bind_addresses=0.0.0.0:7251
+        --rpc_advertised_addresses=${DOCKER_IP}:7251
         --webserver_port=8251
         --webserver_advertised_addresses=${DOCKER_IP}:8251
         --webserver_doc_root=/opt/kudu/www
@@ -69,6 +74,7 @@ services:
       - >
         TSERVER_ARGS=--fs_wal_dir=/var/lib/kudu/tserver
         --rpc_bind_addresses=0.0.0.0:7050
+        --rpc_advertised_addresses=${DOCKER_IP}:7050
         --webserver_port=8050
         --webserver_advertised_addresses=${DOCKER_IP}:8050
         --webserver_doc_root=/opt/kudu/www
@@ -90,6 +96,7 @@ services:
       - >
         TSERVER_ARGS=--fs_wal_dir=/var/lib/kudu/tserver
         --rpc_bind_addresses=0.0.0.0:7150
+        --rpc_advertised_addresses=${DOCKER_IP}:7150
         --webserver_port=8150
         --webserver_advertised_addresses=${DOCKER_IP}:8150
         --webserver_doc_root=/opt/kudu/www
@@ -111,6 +118,7 @@ services:
       - >
         TSERVER_ARGS=--fs_wal_dir=/var/lib/kudu/tserver
         --rpc_bind_addresses=0.0.0.0:7250
+        --rpc_advertised_addresses=${DOCKER_IP}:7250
         --webserver_port=8250
         --webserver_advertised_addresses=${DOCKER_IP}:8250
         --webserver_doc_root=/opt/kudu/www
@@ -133,4 +141,3 @@ services:
     command: ["impala"]
     environment:
       - KUDU_MASTERS=${KUDU_MASTERS}
-

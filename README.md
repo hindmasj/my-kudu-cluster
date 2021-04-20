@@ -203,9 +203,24 @@ and a KuduContext object. Look for the objects ``kuduMasterURL`` and ``kc``.
 ./local-spark-shell.sh
 ````
 
-The problem is that the networking nature of the docker cluster means the local spark shell cannot 
-resolve the tablet and master addresses returned by the RPC calls. Lovely for playing with Spark but we
-really need to use a container?
+We can try creating a KuduClient and working with our new table.
+
+````
+import scala.collection.JavaConversions._
+
+val builder = new KuduClient.KuduClientBuilder(kuduMasterURL)
+val client = builder.disableStatistics.build
+val tablesList = client.getTablesList
+for(t <- tablesList.getTablesList) {println(t)}
+````
+
+If you were using scala 2.13+ (which you cannot yet with Spark), the above loop would look like
+
+````
+import scala.jdk.CollectionConverters._
+...
+for(t <- tablesList.getTablesList.asScala) {println(t)}
+````
 
 ### Create Custom Spark Docker Image
 
