@@ -24,5 +24,5 @@ export SPARK_HOME=/opt/spark
 $SPARK_HOME/bin/spark-shell \
 	--master local \
 	--packages org.apache.kudu:kudu-spark2_2.11:1.13.0 \
-	-I ${LOC}/kudu-spark.scala
+	-I ${LOC}/kudu-spark.scala "${@}"
 
