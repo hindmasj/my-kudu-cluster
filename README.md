@@ -228,7 +228,7 @@ Use the [Big Data Europe](https://github.com/big-data-europe) image.
 
 ````
 docker pull bde2020/spark-base
-docker build -f Dockerfile-spark -t sjh/spark .
+docker build -f Dockerfile-spark -t hindmasj/spark .
 ````
 
 The image build requires the spark tgz file downloaded above. The base image uses a version of spark 3 built with

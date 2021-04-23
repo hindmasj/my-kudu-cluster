@@ -1,0 +1,8 @@
+#
+# Dockerfile to create a zookeeper image with updated OS
+# This should remove the vulnerabilities found in docker scan
+#
+
+FROM wurstmeister/zookeeper:latest
+RUN apt-get update
+RUN apt-get upgrade -y
