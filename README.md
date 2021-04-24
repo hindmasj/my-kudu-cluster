@@ -356,12 +356,12 @@ using a schema. See the next section.
 import org.apache.spark.sql.functions._
 
 val df1 = df.withColumn("ts_sec",col("ts") / 1000 cast("timestamp")).
-	withColumn("yyyy",year(col("ts_sec")) cast "int").
-	withColumn("mm",month(col("ts_sec")) cast "int").
-	withColumn("dd",dayofmonth(col("ts_sec")) cast "int").
-	withColumn("value",col("value") cast "int").
+    withColumn("yyyy",year(col("ts_sec")) cast "int").
+    withColumn("mm",month(col("ts_sec")) cast "int").
+    withColumn("dd",dayofmonth(col("ts_sec")) cast "int").
+    withColumn("value",col("value") cast "int").
     withColumn("ts",col("ts") * 1000).
-	drop("ts_sec")
+    drop("ts_sec")
 	
 df1.show
 ````
@@ -397,9 +397,9 @@ import org.apache.spark.sql.functions._
 
 val df1 = df.
     withColumn("ts_sec",col("ts") / 1000 cast("timestamp")).
-	withColumn("yyyy",year(col("ts_sec"))).
-	withColumn("mm",month(col("ts_sec"))).
-	withColumn("dd",dayofmonth(col("ts_sec"))).
+    withColumn("yyyy",year(col("ts_sec"))).
+    withColumn("mm",month(col("ts_sec"))).
+    withColumn("dd",dayofmonth(col("ts_sec"))).
     withColumn("ts",col("ts") * 1000).
     drop("ts_sec")
 ````
