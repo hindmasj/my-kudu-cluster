@@ -1,19 +1,20 @@
 # Quickstart
 
+## Building The Images
+
+````
+./refresh_images
+````
+
 ## Managing The Cluster
 
 How to use Docker to create your cluster.
 
-### Creating The Cluster
+### Creating/Starting The Cluster
 
 ````
 ./full-cluster.sh up -d
-````
-
-### Starting The Cluster
-
-````
-./full-cluster.sh up -d
+./full-cluster.sh logs -f
 ````
 
 ### Stopping The Cluster
@@ -42,13 +43,32 @@ To use the Kudu command line you should execute it from the first master contain
 "kudu-master". The kudu master list is always "kudu-master-0:7051,kudu-master-1:7151,kudu-master-2:7251".
 
 ````
+docker exec -it kudu-master kudu master list kudu-master-0:7051
+
+Configuration error: Could not connect to the cluster: no leader master found. 
+Client configured with 1 master(s) (kudu-master-0:7051) but cluster indicates it expects 3 master(s) 
+(kudu-master-0:7051,kudu-master-1:7151,kudu-master-2:7251)
+
+docker exec -it kudu-master kudu master list kudu-master-0:7051,kudu-master-1:7151,kudu-master-2:7251
+
+               uuid               |    rpc-addresses    |   role
+----------------------------------+---------------------+----------
+ 1179a46f94ab4dd98038c009340517e1 | 172.19.227.131:7051 | FOLLOWER
+ b721afbcfad44014b764c617e065c9b7 | 172.19.227.131:7151 | LEADER
+ 14ec7c9f0c6a43f89d99e6145dfa5c5d | 172.19.227.131:7251 | FOLLOWER
+ 
+docker exec -it kudu-master kudu cluster ksck kudu-master-0:7051,kudu-master-1:7151,kudu-master-2:7251 
+ ````
+
+See the script ``kudu/create_foo.sh`` for an example of how to create a table from the command line.
+
+````
+kudu/create_foo.sh
+
 docker exec -it kudu-master kudu table list kudu-master-0:7051,kudu-master-1:7151,kudu-master-2:7251
 
 foo
-impala::default.foo
 ````
-
-See the script ``kudu/create_foo.sh`` for an example of how to create a table from the command line.
 
 # Impala
 
@@ -70,8 +90,16 @@ To get an Impala prompt run the script ``impala-shell.sh``.
 create table foo (id int primary key, value string) partition by hash partitions 2 stored as kudu;
 insert into foo values (1,'hello');
 select * from foo;
-drop table foo;
 exit;
+````
+
+Now there is a new table, with the prefix indicating it is an Impala table in the "default" database.
+
+````
+docker exec -it kudu-master kudu table list kudu-master-0:7051,kudu-master-1:7151,kudu-master-2:7251
+
+foo
+impala::default.foo
 ````
 
 ### Query Command
@@ -107,6 +135,8 @@ echo "select * from foo;" > test-foo.sql
 
 Could not open file 'test-foo.sql': [Errno 2] No such file or directory: 'test-foo.sql'
 ````
+
+Use the ``docker cp`` command to copy the file to the Impala user's home directory.
 
 ````
 docker cp test-foo.sql kudu-impala:/home/impala
@@ -181,7 +211,17 @@ alter table test2 add range partition value = (2020,12,15);
 insert into test2 values ('world',2020,12,15,0,'2020-12-15T12:34:56');
 ````
 
+This table will be used in the Spark examples below.
+
 # Some Spark
+
+When using either of the methods for accessing a spark shell shown below, the start up sequence create the
+following useful objects for you.
+
+ * kuduMasterURL: String
+ * kuduContext: org.apache.kudu.spark.kudu.KuduContext
+ * kuduBuilder: org.apache.kudu.client.KuduClient$KuduClientBuilder
+ * kuduClient: org.apache.kudu.client.KuduClient
 
 ## Adding Spark Shell To The Cluster
 
@@ -203,14 +243,12 @@ and a KuduContext object. Look for the objects ``kuduMasterURL`` and ``kc``.
 ./local-spark-shell.sh
 ````
 
-We can try creating a KuduClient and working with our new table.
+We can try using the Kudu client to work with our new table.
 
 ````
 import scala.collection.JavaConversions._
 
-val builder = new KuduClient.KuduClientBuilder(kuduMasterURL)
-val client = builder.disableStatistics.build
-val tablesList = client.getTablesList
+val tablesList = kuduClient.getTablesList
 for(t <- tablesList.getTablesList) {println(t)}
 ````
 
@@ -222,22 +260,36 @@ import scala.jdk.CollectionConverters._
 for(t <- tablesList.getTablesList.asScala) {println(t)}
 ````
 
+You can use the Kudu Spark context too.
+
+````
+kuduContext.tableExists("impala::default.test2")
+val kuduRDD = kuduContext.kuduRDD(sc,"impala::default.test2")
+kuduRDD.count
+val kuduRDD = kuduContext.kuduRDD(sc,"impala::default.test2",Seq("id","value","ts"))
+kuduRDD.take(10).foreach(println)
+
+res2: Boolean = true
+kuduRDD: org.apache.spark.rdd.RDD[org.apache.spark.sql.Row] = KuduRDD[0] at RDD at KuduRDD.scala:48
+res3: Long = 2
+[hello,0,2020-12-14 12:34:56.0]
+[world,0,2020-12-15 12:34:56.0]
+````
+
 ### Create Custom Spark Docker Image
 
-Use the [Big Data Europe](https://github.com/big-data-europe) image.
+The image uses the [Big Data Europe](https://github.com/big-data-europe) image as a base. 
+The resulting image is built when you run the ``refresh-images.sh`` script.
 
-````
-docker pull bde2020/spark-base
-docker build -f Dockerfile-spark -t hindmasj/spark .
-````
-
-The image build requires the spark tgz file downloaded above. The base image uses a version of spark 3 built with
-scala 2.12. By substituting the downloaded archive we get a version of spark 2.4.5 built with scala 2.11. The image starts 
-a spark shell to the correct network, imports the Kudu-Spark API and creates a new "kuduContext" object.
+The image build requires the spark tgz file downloaded above. The base image uses a version of spark 3 
+built with scala 2.12. By substituting the downloaded archive we get a version of spark 2.4.5 built with 
+scala 2.11. The image starts a spark shell to the correct network, imports the Kudu-Spark API and creates a 
+new "kuduContext" object.
 
 ### Running Spark Shell
 
-This runs the above image as a one shot spark shell. Exiting the shell stops the container and the "--rm" switch cleans it up afterwards.
+This runs the above image as a one shot spark shell. Exiting the shell stops the container and the "--rm" 
+switch cleans it up afterwards.
 
 ````
 ./spark-shell.sh
@@ -247,7 +299,9 @@ This shell creates the same string and KuduContext objects as above.
 
 ## Spark Actions
 
-### Sanity Test
+You can also perform the kuduClient test as shown above.
+
+### Sanity Test Reading A Data Frame
 
 ````
 val df=spark.read.options(
@@ -262,10 +316,12 @@ If you did the previous Impala actions then the answer should be 2.
 
 ### Loading Spark Data
 
-Create a test file with some dates in epoch millis. Use ````date -d 2020-12-14T01:23:45Z '+%s'```` for example. 
-The result is in seconds so you need to add 3 zeroes to get milliseconds, which is what java will normally provide.
+Create a test file with some dates in epoch millis. Use 
+````date -d 2020-12-14T01:23:45Z '+%s'```` for example. 
+The result is in seconds so you need to add 3 zeroes to get milliseconds, which is what java will normally 
+provide.
 
-This file has been copied to the container for you. Load a dataframe from the file.
+A version of this file has been copied to the container for you. Load a dataframe from the file.
 
 ````
 val df=spark.read.json("test-data.json")
@@ -289,6 +345,72 @@ df.map(r => new Timestamp(r.getAs[Long]("ts"))).show
 |2020-12-15 09:13:14|
 +-------------------+
 ````
+
+### Writing The Data To The Table
+
+Now add the extra year, month and day columns. See the discussion below for why we do it this way.
+The other column types have to be coerced into matching the Impala data types. This could be avoided by
+using a schema. See the next section.
+
+````
+import org.apache.spark.sql.functions._
+
+val df1 = df.withColumn("ts_sec",col("ts") / 1000 cast("timestamp")).
+	withColumn("yyyy",year(col("ts_sec")) cast "int").
+	withColumn("mm",month(col("ts_sec")) cast "int").
+	withColumn("dd",dayofmonth(col("ts_sec")) cast "int").
+	withColumn("value",col("value") cast "int").
+    withColumn("ts",col("ts") * 1000).
+	drop("ts_sec")
+	
+df1.show
+````
+
+Write the data frame to the table "test2".
+
+````
+kuduContext.insertRows(df1,"impala::default.test2")
+````
+
+### Writing The Data With Schemas
+
+Create a schema for the loaded data. Note that we define the timestamp as a bigint, not a timestamp
+as we still need to manipulate it to convert from a millisecond, then seconds, and then to
+microseconds.
+
+````
+import org.apache.spark.sql.types._
+
+val loadedSchema = StructType( Array(
+  StructField("id",StringType,false),
+  StructField("ts",LongType,false),
+  StructField("value",IntegerType,false)
+))
+
+val df=spark.read.schema(loadedSchema).json("test-data.json")
+````
+
+Again, extract the extra values and convert the timestamp to microseconds.
+
+````
+import org.apache.spark.sql.functions._
+
+val df1 = df.
+    withColumn("ts_sec",col("ts") / 1000 cast("timestamp")).
+	withColumn("yyyy",year(col("ts_sec"))).
+	withColumn("mm",month(col("ts_sec"))).
+	withColumn("dd",dayofmonth(col("ts_sec"))).
+    withColumn("ts",col("ts") * 1000).
+    drop("ts_sec")
+````
+
+Now write to the table. This time we are writing with the same keys as before, so we need to "upsert".
+
+````
+kuduContext.upsertRows(df1,"impala::default.test2")
+````
+    
+## Spark Discussion
 
 ### Diversion: Manipulating Time In Scala
 
@@ -349,16 +471,20 @@ object dateUtil{
 val df1 = df.map(row => dateUtil.mergeDateFields(row))
 
 <console>:58: error: Unable to find encoder for type org.apache.spark.sql.Row. 
-An implicit Encoder[org.apache.spark.sql.Row] is needed to store org.apache.spark.sql.Row instances in a Dataset. 
-Primitive types (Int, String, etc) and Product types (case classes) are supported by importing spark.implicits._  
+An implicit Encoder[org.apache.spark.sql.Row] is needed to store org.apache.spark.sql.Row instances in a 
+Dataset. 
+Primitive types (Int, String, etc) and Product types (case classes) are supported by importing 
+spark.implicits._  
 Support for serializing other types will be added in future releases.
 ````
 
-Sadly this does not work, as you cannot map one row to another. Notice also that the schema cannot be applied, which gives you the clue you are doing wrongly.
+Sadly this does not work, as you cannot map one row to another. Notice also that the schema cannot be 
+applied, which gives you the clue you are doing wrongly.
 
 #### Column-wise Transform
 
-This uses "withColumn" transform and makes use of the generic Spark sql functions. Note that the use of a temporary column to convert the millis time to a timestamp which is in seconds.
+This uses "withColumn" transform and makes use of the generic Spark sql functions. Note that the use of a 
+temporary column to convert the millis time to a timestamp which is in seconds.
 
 ````
 import org.apache.spark.sql.functions._

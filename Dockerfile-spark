@@ -8,14 +8,16 @@ RUN mv /spark /spark_2.12
 ADD /spark-2.4.5-bin-hadoop2.6.tgz /
 RUN ln -s /spark-2.4.5-bin-hadoop2.6 /spark
 WORKDIR /root
-ADD /kudu-spark.scala kudu-spark.scala
-ADD /test-data.json test-data.json
 ADD /exit.scala exit.scala
-ADD /avro/schema.avsc schema.avsc
 # Ensure packages are pre-downloaded
 RUN ["/spark/bin/spark-shell","--packages","org.apache.kudu:kudu-spark2_2.11:1.13.0","-I","exit.scala"]
 RUN ["/spark/bin/spark-shell","--packages","org.apache.spark:spark-avro_2.11:2.4.5","-I","exit.scala"]
 RUN ["/spark/bin/spark-shell","--packages","org.apache.spark:spark-sql-kafka-0-10_2.11:2.4.5","-I","exit.scala"]
+# Add some test files and a start up sequence
+ADD /avro/schema.avsc schema.avsc
+ADD /test-data.json test-data.json
+ADD /kudu-spark.scala kudu-spark.scala
+# Entrypoint includes required packages
 ENTRYPOINT ["/spark/bin/spark-shell","--master","local","--packages", \
 "org.apache.kudu:kudu-spark2_2.11:1.13.0,org.apache.spark:spark-avro_2.11:2.4.5,org.apache.spark:spark-sql-kafka-0-10_2.11:2.4.5", \
 "-I","kudu-spark.scala"]

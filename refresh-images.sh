@@ -23,13 +23,13 @@ ${LOC}/kafka/build-images.sh
 docker image prune -f
 
 # Scan final images
-for image in ${FINAL_IMAGES}
-do
-    docker scan ${image}
-done
+#for image in ${FINAL_IMAGES}
+#do
+#    docker scan ${image}
+#done
 
 # Push locally built images
-for image in ${BUILT_IMAGES}
-do
-    docker push ${image}
-done
+#for image in ${BUILT_IMAGES}
+#do
+#    docker push ${image}
+#done
