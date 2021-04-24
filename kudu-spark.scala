@@ -7,9 +7,9 @@ import scala.sys.process._
 
 sc.setLogLevel("INFO")
 
-// Build a list of masters and ports
-val prefix="my-kudu-cluster_kudu-master-"
-val suffix="_1"
+// Build a list of masters and ports from container names
+val prefix="kudu-master-"
+val suffix=""
 val kuduMasterArray=Seq("kudu-master") ++: {for(x <- 1 to 2) yield prefix+x+suffix}
 val kuduPorts=Seq(7051,7151,7251)
 
@@ -25,24 +25,26 @@ val ip=try {
 } catch {
     case e:java.util.NoSuchElementException => defaultIP
 }
-val (kuduMasterURL,kc) = ip match {
+val kuduMasterURL = ip match {
 
     case `defaultIP` => {
         print("In a container\n")
         // Master URL and context for container based shell
         val kuduContainerList=kuduMasterArray.zip(kuduPorts).map(x => s"${x._1}:${x._2}")
-        val kuduContainerURL=kuduContainerList.mkString(",")
-        (kuduContainerURL,new KuduContext(kuduContainerURL,sc))
+        kuduContainerList.mkString(",")
     }
 
     case _ => {
         print("In a host\n")
         // Master URL and context for local shell
         val kuduLocalList=for(x <- kuduPorts) yield s"${ip}:${x}"
-        val kuduLocalURL=kuduLocalList.mkString(",")
-        (kuduLocalURL,new KuduContext(kuduLocalURL,sc))
+        kuduLocalList.mkString(",")
     }
 
 }
+
+val kuduContext = new KuduContext(kuduMasterURL,sc)
+val kuduClientBuilder = new KuduClient.KuduClientBuilder(kuduMasterURL)
+val kuduClient = kuduClientBuilder.disableStatistics.build
 
 sc.setLogLevel("WARN")
